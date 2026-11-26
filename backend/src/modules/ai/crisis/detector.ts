@@ -9,7 +9,7 @@ import { matchCrisisKeywords } from './keywords';
 
 export const CRISIS_RESOURCES = {
   message:
-    'Terima kasih sudah mau bercerita. Keselamatanmu adalah yang paling penting saat ini. Kamu tidak harus menghadapi ini sendirian — tolong segera hubungi bantuan profesional.',
+    'Terima kasih sudah bercerita. Aku mendengarkan. Apa kamu aman saat ini?',
   contacts: [
     { label: 'Hotline Kesehatan Jiwa Kemenkes', phone: '119', extension: '8', tel: 'tel:119' },
     { label: 'Layanan darurat', phone: '112', tel: 'tel:112' },

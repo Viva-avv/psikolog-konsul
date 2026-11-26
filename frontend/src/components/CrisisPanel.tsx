@@ -7,6 +7,7 @@ import { formatDateTime, formatRupiah } from '@/lib/format';
 import type { CrisisInfo, Recommendation } from '@/lib/types';
 
 export function CrisisPanel({ crisis }: { crisis: CrisisInfo }) {
+  const [safety, setSafety] = useState<'safe' | 'unsafe' | null>(null);
   const [available, setAvailable] = useState<Recommendation[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,6 +25,13 @@ export function CrisisPanel({ crisis }: { crisis: CrisisInfo }) {
   return (
     <section role="alert" className="rounded-xl border-2 border-red-300 bg-red-50 p-5">
       <p className="text-sm text-red-900">{crisis.message}</p>
+      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Keadaanmu saat ini">
+        <button type="button" aria-pressed={safety === 'safe'} className="rounded border px-3 py-2 aria-pressed:bg-red-100" onClick={() => setSafety('safe')}>Aku aman saat ini</button>
+        <button type="button" aria-pressed={safety === 'unsafe'} className="rounded border px-3 py-2 aria-pressed:bg-red-100" onClick={() => setSafety('unsafe')}>Belum aman atau belum yakin</button>
+      </div>
+      <p aria-live="polite" className="mt-3 text-sm text-red-900">
+        {safety === 'safe' ? 'Terima kasih sudah memberi tahu. Meski sekarang aman, coba hubungi seseorang yang kamu percaya agar bisa menemanimu.' : safety === 'unsafe' ? 'Terima kasih sudah memberi tahu. Jika kamu atau orang lain belum aman, segera hubungi layanan darurat setempat atau minta orang tepercaya memanggil bantuan.' : 'Jika ada bahaya sekarang, segera hubungi layanan darurat setempat atau minta orang yang kamu percaya menemanimu ke IGD.'}
+      </p>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {crisis.contacts.map((c) => (
           <a
@@ -39,17 +47,13 @@ export function CrisisPanel({ crisis }: { crisis: CrisisInfo }) {
           </a>
         ))}
       </div>
-      <p className="mt-3 text-xs text-red-800">
-        Jika Anda dalam bahaya langsung, segera hubungi 112 atau datangi IGD rumah sakit terdekat, dan beri tahu orang
-        yang Anda percaya.
-      </p>
 
       <button
         onClick={loadAvailable}
         disabled={loading}
         className="mt-4 w-full rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
       >
-        {loading ? 'Mencari...' : 'Booking sesi segera dengan psikolog'}
+        {loading ? 'Mencari...' : 'Hubungi Psikolog Sekarang'}
       </button>
 
       {available && (

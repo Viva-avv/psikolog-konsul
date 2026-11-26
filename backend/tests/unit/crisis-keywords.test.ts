@@ -3,6 +3,9 @@ import { matchCrisisKeywords, normalizeForMatching } from '../../src/modules/ai/
 import { keywordCheck } from '../../src/modules/ai/crisis/detector';
 
 describe('crisis keyword detection', () => {
+  it.each(['Aku ingin menyakiti orang lain', 'Saya sedang dipukuli'])('prioritizes immediate danger: %s', (text) => {
+    expect(keywordCheck(text)).toMatchObject({ isCrisis: true, riskLevel: 'HIGH' });
+  });
   it.each([
     'aku pengen mati aja',
     'Saya ingin BUNUH DIRI',

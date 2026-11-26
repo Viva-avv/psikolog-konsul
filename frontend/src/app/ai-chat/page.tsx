@@ -29,7 +29,7 @@ function ConsentCard({ onAccept }: { onAccept: (store: boolean) => Promise<void>
       <ul className="list-inside list-disc space-y-1 text-sm text-slate-700">
         <li>Pesan Anda diproses oleh penyedia AI (Anthropic Claude) untuk menghasilkan balasan.</li>
         <li>AI tidak memberi diagnosis atau saran obat, dan akan mengarahkan Anda ke psikolog bila perlu.</li>
-        <li>Jika terdeteksi risiko keselamatan, percakapan dihentikan dan kontak darurat ditampilkan. Admin hanya menerima catatan insiden tanpa isi percakapan.</li>
+        <li>Jika ada risiko keselamatan, chat beralih ke pilihan respons keselamatan dan kontak bantuan. Admin hanya menerima catatan insiden tanpa isi percakapan.</li>
       </ul>
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" checked={store} onChange={(e) => setStore(e.target.checked)} className="mt-1" />
@@ -83,7 +83,7 @@ function ChatWindow({ persistent }: { persistent: boolean }) {
   useEffect(() => {
     if (!persistent) return;
     loadConversations().then((items) => {
-      const latest = items.find((c) => c.status === 'ACTIVE');
+      const latest = items.find((c) => c.status !== 'CLOSED');
       if (latest) openConversation(latest.id);
     });
   }, [persistent, loadConversations, openConversation]);
@@ -213,26 +213,25 @@ function ChatWindow({ persistent }: { persistent: boolean }) {
             </div>
           ))}
           {sending && <p className="text-sm text-slate-400">Teman Cerita sedang mengetik...</p>}
-          {crisis && <CrisisPanel crisis={crisis} />}
+          {crisis && <CrisisPanel key={activeId} crisis={crisis} />}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={send} className="flex gap-2 border-t border-slate-200 p-3">
+        {!crisis && <form onSubmit={send} className="flex gap-2 border-t border-slate-200 p-3">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             maxLength={MAX_CHARS}
             rows={2}
-            disabled={Boolean(crisis)}
-            placeholder={crisis ? 'Percakapan dihentikan demi keselamatan Anda.' : 'Tulis pesan... (Enter untuk kirim)'}
+            placeholder="Tulis pesan... (Enter untuk kirim)"
             className="input flex-1 resize-none"
           />
-          <button type="submit" disabled={sending || !input.trim() || Boolean(crisis)} className="btn-primary self-end">
+          <button type="submit" disabled={sending || !input.trim()} className="btn-primary self-end">
             Kirim
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   );

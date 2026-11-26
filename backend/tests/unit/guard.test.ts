@@ -22,6 +22,9 @@ describe('AI input sanitization', () => {
 });
 
 describe('AI output filter', () => {
+  it.each(['Kamu depresi.', 'Ini terdengar seperti bipolar.'])('returns the diagnosis refusal and booking offer: %s', (text) => {
+    expect(filterOutput(text)).toEqual({ blocked: true, text: 'Aku tidak bisa mendiagnosis. Yang bisa kulakukan adalah membantumu menjelaskan keluhanmu, dan psikolog di aplikasi ini bisa menilainya dengan tepat. Mau booking sesi dengan psikolog terverifikasi di aplikasi ini?' });
+  });
   it.each([
     'Coba minum sertraline 50 mg setiap pagi.',
     'Sepertinya kamu mengalami depresi mayor.',

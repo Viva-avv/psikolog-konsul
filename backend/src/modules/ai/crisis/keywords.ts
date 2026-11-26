@@ -20,6 +20,8 @@ const ME = '(aku|saya|gue|gw|gua|ku)';
 
 // High-precision patterns only; ambiguous phrasing is left to the LLM classifier.
 const PATTERNS: Array<{ category: CrisisCategory; re: RegExp }> = [
+  { category: 'OTHER', re: new RegExp(`\\b${ME} ${WANT} (menyakiti|melukai|membunuh|nyakitin) (orang lain|dia|seseorang)\\b`) },
+  { category: 'OTHER', re: new RegExp(`\\b${ME} (sedang|lagi) (dipukuli|diserang|diancam|dipukul)\\b`) },
   { category: 'SUICIDAL', re: /\b(bunuh diri|bundir|ngebundir|suicide|suicidal|kill myself|end my life|want to die)\b/ },
   { category: 'SUICIDAL', re: /\b(mengakhiri|akhiri|akhirin|ngakhirin) (hidup|nyawa)\b/ },
   { category: 'SUICIDAL', re: new RegExp(`\\b${WANT} (untuk )?(mati|segera mati|cepat mati)\\b`) },

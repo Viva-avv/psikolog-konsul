@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { env } from '../../config/env';
+import { DIAGNOSIS_REPLY } from './prompts';
 
 export const MAX_MESSAGE_CHARS = 2000;
 
@@ -22,9 +23,8 @@ const BLOCKED_OUTPUT: Array<{ pattern: RegExp; fallback: string }> = [
   },
   {
     pattern:
-      /\b(kamu|anda|kau)\s+(sepertinya\s+|mungkin\s+|jelas\s+)?(mengalami|menderita|mengidap|terkena|punya)\s+(gangguan|depresi\s+(mayor|klinis)|bipolar|skizofrenia|ptsd|ocd|adhd|borderline|bpd)\b/i,
-    fallback:
-      'Aku tidak bisa memberikan diagnosis. Yang kamu rasakan tetap penting dan layak mendapat perhatian. Psikolog di platform ini bisa membantu memahami kondisimu lebih dalam — kamu bisa mengisi pra-asesmen lalu booking sesi kapan pun kamu siap.',
+      /\b(?:(?:kamu|anda|kau)\s+(?:(?:sepertinya|mungkin|jelas)\s+)?(?:(?:mengalami|menderita|mengidap|terkena|punya)\s+)?|ini terdengar seperti\s+)(?:gangguan|depresi|bipolar|skizofrenia|ptsd|ocd|adhd|borderline|bpd)\b/i,
+    fallback: DIAGNOSIS_REPLY,
   },
   {
     pattern: /\b(saya|aku)\s+(adalah\s+)?(seorang\s+)?(psikolog|terapis|psikiater|dokter)\b/i,
