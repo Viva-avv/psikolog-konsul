@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Fields suffixed with "Enc" hold AES-256-GCM ciphertext (see src/lib/crypto.ts).
+
+enum Role {
+  USER
+  PSYCHOLOGIST
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum DocumentType {
+  STR
+  SIPP
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SlotStatus {
+  AVAILABLE
+  HELD
+  BOOKED
+  BLOCKED
+}
+
+enum SessionMode {
+  CHAT
+  VIDEO
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SETTLED
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+enum ConversationStatus {
+  ACTIVE
+  CRISIS_LOCKED
+  CLOSED
+}
+
+enum AiRole {
+  USER
+  ASSISTANT
+}
+
+enum AssessmentType {
+  PHQ9
+  GAD7
+}
+
+enum ConsentType {
+  TERMS_PRIVACY
+  AI_PROCESSING
+  STORE_AI_CHAT
+  STORE_ASSESSMENT
+  SHARE_ASSESSMENT
+}
+
+enum CrisisSource {
+  AI_CHAT
+  ASSESSMENT
+}
+
+enum CrisisTrigger {
+  KEYWORD
+  CLASSIFIER
+  PHQ9_ITEM9
+  FAILSAFE
+}
+
+enum CrisisCategory {
+  SELF_HARM
+  SUICIDAL
+  OTHER
+}
+
+enum RiskLevel {
+  MEDIUM
+  HIGH
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum DeletionStatus {
+  PENDING
+  COMPLETED
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(USER)
+  fullName     String
+  status       UserStatus @default(ACTIVE)
+  deletedAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  psychologistProfile PsychologistProfile?  @relation("ProfileOwner")
+  verifiedProfiles    PsychologistProfile[] @relation("ProfileVerifier")
+  refreshTokens       RefreshToken[]
+  consents            Consent[]
+  bookings            Booking[]
+  aiConversations     AiConversation[]
+  assessments         Assessment[]
+  assessmentSummaries AssessmentSummary[]
+  chatMessages        ChatMessage[]
+  crisisIncidents     CrisisIncident[]      @relation("IncidentUser")
+  handledIncidents    CrisisIncident[]      @relation("IncidentHandler")
+  auditLogs           AuditLog[]
+  deletionRequests    DataDeletionRequest[]
+
+  @@index([role, status])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PsychologistProfile {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @unique @db.Uuid
+  title              String?
+  bio                String?
+  yearsExperience    Int                @default(0)
+  pricePerSession    Int                @default(0)
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedById       String?            @db.Uuid
+  verifiedAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user            User                        @relation("ProfileOwner", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy      User?                       @relation("ProfileVerifier", fields: [verifiedById], references: [id])
+  specializations PsychologistSpecialization[]
+  documents       VerificationDocument[]
+  slots           AvailabilitySlot[]
+  bookings        Booking[]
+  sessionNotes    SessionNote[]
+
+  @@index([verificationStatus])
+}
+
+model Specialization {
+  id            Int                          @id @default(autoincrement())
+  slug          String                       @unique
+  name          String
+  psychologists PsychologistSpecialization[]
+}
+
+model PsychologistSpecialization {
+  psychologistId   String @db.Uuid
+  specializationId Int
+
+  psychologist   PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  specialization Specialization      @relation(fields: [specializationId], references: [id], onDelete: Cascade)
+
+  @@id([psychologistId, specializationId])
+}
+
+model VerificationDocument {
+  id             String         @id @default(uuid()) @db.Uuid
+  psychologistId String         @db.Uuid
+  type           DocumentType
+  numberEnc      String
+  fileKey        String         @unique
+  mimeType       String
+  expiresAt      DateTime?
+  status         DocumentStatus @default(PENDING)
+  reviewNote     String?
+  createdAt      DateTime       @default(now())
+
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  @@index([psychologistId])
+}
+
+model AvailabilitySlot {
+  id             String     @id @default(uuid()) @db.Uuid
+  psychologistId String     @db.Uuid
+  startAt        DateTime
+  endAt          DateTime
+  status         SlotStatus @default(AVAILABLE)
+  createdAt      DateTime   @default(now())
+
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+
+  @@unique([psychologistId, startAt])
+  @@index([status, startAt])
+}
+
+model Booking {
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @db.Uuid
+  psychologistId  String        @db.Uuid
+  // Not unique: a slot can be re-booked after cancel/expiry. Exclusivity is enforced via AvailabilitySlot.status.
+  slotId          String        @db.Uuid
+  mode            SessionMode   @default(VIDEO)
+  status          BookingStatus @default(PENDING_PAYMENT)
+  // Price snapshot at booking time (IDR).
+  price           Int           @default(0)
+  sharedSummaryId String?       @db.Uuid
+  videoRoomUrl    String?       @unique
+  holdExpiresAt   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id])
+  psychologist  PsychologistProfile @relation(fields: [psychologistId], references: [id])
+  slot          AvailabilitySlot    @relation(fields: [slotId], references: [id])
+  sharedSummary AssessmentSummary?  @relation(fields: [sharedSummaryId], references: [id], onDelete: SetNull)
+  payment       Payment?
+  messages      ChatMessage[]
+  notes         SessionNote[]
+
+  @@index([userId])
+  @@index([slotId])
+  @@index([psychologistId, status])
+  @@index([status, holdExpiresAt])
+}
+
+model Payment {
+  id                    String        @id @default(uuid()) @db.Uuid
+  bookingId             String        @unique @db.Uuid
+  orderId               String        @unique
+  amount                Int
+  status                PaymentStatus @default(PENDING)
+  snapToken             String?
+  snapRedirectUrl       String?
+  transactionStatus     String?
+  midtransTransactionId String?
+  paymentType           String?
+  // Set when money was received but the session could not be honoured (late payment, cancellation).
+  refundRequired        Boolean       @default(false)
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String   @db.Uuid
+  senderId   String?  @db.Uuid
+  contentEnc String
+  createdAt  DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sender  User?   @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, createdAt])
+}
+
+model SessionNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  bookingId      String   @db.Uuid
+  psychologistId String   @db.Uuid
+  contentEnc     String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  booking      Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  psychologist PsychologistProfile @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, psychologistId])
+}
+
+model AiConversation {
+  id        String             @id @default(uuid()) @db.Uuid
+  userId    String             @db.Uuid
+  status    ConversationStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
+
+  @@index([userId])
+}
+
+model AiMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @db.Uuid
+  role           AiRole
+  contentEnc     String
+  createdAt      DateTime @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model Assessment {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @db.Uuid
+  type      AssessmentType
+  resultEnc String
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model AssessmentSummary {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  contentEnc String
+  createdAt  DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([userId])
+}
+
+model Consent {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @db.Uuid
+  type          ConsentType
+  scopeRef      String?
+  policyVersion String
+  grantedAt     DateTime    @default(now())
+  revokedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model CrisisIncident {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String?        @db.Uuid
+  source      CrisisSource
+  trigger     CrisisTrigger
+  category    CrisisCategory
+  riskLevel   RiskLevel
+  status      IncidentStatus @default(OPEN)
+  handledById String?        @db.Uuid
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user      User? @relation("IncidentUser", fields: [userId], references: [id], onDelete: SetNull)
+  handledBy User? @relation("IncidentHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String?
+  entityId   String?
+  ipHash     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+model DataDeletionRequest {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  status      DeletionStatus @default(PENDING)
+  requestedAt DateTime       @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
