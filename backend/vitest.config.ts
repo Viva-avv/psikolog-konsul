@@ -14,6 +14,9 @@ export default defineConfig({
       IP_HASH_SALT: 'test-salt-123',
       POLICY_VERSION: 'test',
       MIDTRANS_SERVER_KEY: 'SB-Mid-server-TEST',
+      // AI disabled so tests never reach a real model (even if Ollama runs locally).
+      AI_PROVIDER: 'ollama',
+      OLLAMA_BASE_URL: '',
       ANTHROPIC_API_KEY: '',
       DAILY_API_KEY: '',
     },

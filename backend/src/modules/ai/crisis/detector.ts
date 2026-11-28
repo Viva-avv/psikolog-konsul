@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { CrisisCategory, CrisisSource, CrisisTrigger, RiskLevel } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
-import { complete, parseJsonObject } from '../../../lib/claude';
+import { complete, parseJsonObject } from '../../../lib/llm';
 import { AppError } from '../../../lib/errors';
 import { logger } from '../../../lib/logger';
 import { CLASSIFIER_JSON_SCHEMA, CLASSIFIER_SYSTEM_PROMPT } from '../prompts';

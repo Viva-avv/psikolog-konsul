@@ -27,7 +27,7 @@ function ConsentCard({ onAccept }: { onAccept: (store: boolean) => Promise<void>
       <h1 className="text-xl font-semibold">Sebelum mulai bercerita</h1>
       <AiDisclaimer />
       <ul className="list-inside list-disc space-y-1 text-sm text-slate-700">
-        <li>Pesan Anda diproses oleh penyedia AI (Anthropic Claude) untuk menghasilkan balasan.</li>
+        <li>Pesan Anda diproses oleh model AI (Ollama) yang berjalan di server platform, tidak dikirim ke penyedia AI pihak ketiga.</li>
         <li>AI tidak memberi diagnosis atau saran obat, dan akan mengarahkan Anda ke psikolog bila perlu.</li>
         <li>Jika ada risiko keselamatan, chat beralih ke pilihan respons keselamatan dan kontak bantuan. Admin hanya menerima catatan insiden tanpa isi percakapan.</li>
       </ul>

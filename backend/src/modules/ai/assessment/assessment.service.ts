@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { AssessmentType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../../../lib/prisma';
-import { complete, parseJsonObject } from '../../../lib/claude';
+import { complete, parseJsonObject } from '../../../lib/llm';
 import { decryptJson, encryptJson } from '../../../lib/crypto';
 import { audit } from '../../../lib/audit';
 import { AppError, badRequest, notFound } from '../../../lib/errors';

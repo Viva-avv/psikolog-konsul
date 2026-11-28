@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { prisma } from '../../lib/prisma';
-import { complete } from '../../lib/claude';
+import { complete } from '../../lib/llm';
 import { decrypt, encrypt } from '../../lib/crypto';
 import { audit } from '../../lib/audit';
 import { AppError, badRequest, notFound } from '../../lib/errors';
@@ -9,7 +9,7 @@ import { hasConsent, requireConsent } from '../consents/consents.service';
 import { COMPANION_SYSTEM_PROMPT } from './prompts';
 import { filterOutput, sanitizeInput, signAssistantMessage, verifyAssistantMessage } from './guard';
 import { CRISIS_RESOURCES, classifierCheck, keywordCheck, recordIncident, type RiskAssessment } from './crisis/detector';
-import type { ChatTurn } from '../../lib/claude';
+import type { ChatTurn } from '../../lib/llm';
 import type { EphemeralChatInput } from './ai.schema';
 
 const CONTEXT_TURNS = 20;
@@ -19,7 +19,7 @@ type PipelineResult = { crisis: Crisis } | { reply: string };
 
 export const crisisResponse = () => ({ type: 'CRISIS' as const, crisis: CRISIS_RESOURCES });
 
-/** Claude requires alternating roles starting with "user"; merge consecutive same-role turns. */
+/** Chat models expect alternating roles starting with "user"; merge consecutive same-role turns. */
 function normalizeTurns(turns: ChatTurn[]): ChatTurn[] {
   const out: ChatTurn[] = [];
   for (const t of turns) {

@@ -24,7 +24,7 @@ Platform untuk booking sesi dengan **psikolog terverifikasi**, dengan **AI sebag
 | **Psikolog** | Profil & spesialisasi, unggah STR/SIPP, atur slot jadwal, daftar sesi, lihat ringkasan pra-asesmen (jika dibagikan), catatan sesi terenkripsi, ruang sesi |
 | **Admin** | Ringkasan laporan, kelola pengguna (tangguhkan/aktifkan), verifikasi psikolog, log insiden krisis (tanpa isi percakapan), antrean refund, audit log |
 
-**AI (Claude, hanya dipanggil dari backend):** pendamping empatik + psikoedukasi; dilarang mendiagnosis, menyebut obat, atau mengaku terapis. Deteksi krisis dua lapis (kata kunci deterministik → classifier LLM); jika terdeteksi, respons AI dihentikan, kontak darurat dan tombol *booking segera* ditampilkan, dan insiden dicatat tanpa isi pesan.
+**AI (default: model open-source lewat [Ollama](https://ollama.com), gratis & self-hosted; opsional Claude; hanya dipanggil dari backend):** pendamping empatik + psikoedukasi; dilarang mendiagnosis, menyebut obat, atau mengaku terapis. Deteksi krisis dua lapis (kata kunci deterministik → classifier LLM); jika terdeteksi, respons AI dihentikan, kontak darurat dan tombol *booking segera* ditampilkan, dan insiden dicatat tanpa isi pesan.
 
 ## Arsitektur
 
@@ -35,7 +35,7 @@ flowchart LR
   B -- iframe + token --> Daily[(Daily video)]
   B -- Snap.js --> MT[(Midtrans)]
   API -- Prisma --> DB[(PostgreSQL)]
-  API -- HTTPS --> Claude[(Claude API)]
+  API -- HTTP --> LLM[(Ollama<br/>atau Claude API)]
   API -- REST --> Daily
   API -- REST + webhook --> MT
   API -- private disk --> FS[(uploads/ STR, SIPP)]
@@ -48,7 +48,7 @@ PSIKOLOG/
 │  ├─ prisma/                  # schema.prisma, migrations/, seed.ts
 │  ├─ src/
 │  │  ├─ config/env.ts         # validasi env (zod)
-│  │  ├─ lib/                  # crypto, jwt, claude, daily, midtrans, storage, audit
+│  │  ├─ lib/                  # crypto, jwt, llm (Ollama/Claude), daily, midtrans, storage, audit
 │  │  ├─ middleware/           # auth/RBAC, validate, rateLimit, upload, error
 │  │  ├─ modules/              # auth, users, consents, psychologists, bookings,
 │  │  │                        # payments, chat, video, ai, admin
@@ -68,7 +68,8 @@ PSIKOLOG/
 ### Prasyarat
 - Node.js 20+ (diuji di 22)
 - Docker Desktop (untuk PostgreSQL) **atau** PostgreSQL 14+ lokal
-- Opsional: akun [Anthropic](https://console.anthropic.com), [Daily](https://dashboard.daily.co), [Midtrans Sandbox](https://dashboard.sandbox.midtrans.com)
+- [Ollama](https://ollama.com/download) untuk fitur AI (gratis, berjalan lokal; RAM ≥ 8 GB, GPU opsional)
+- Opsional: akun [Anthropic](https://console.anthropic.com) (pengganti Ollama), [Daily](https://dashboard.daily.co), [Midtrans Sandbox](https://dashboard.sandbox.midtrans.com)
 
 ### Langkah
 
@@ -76,7 +77,10 @@ PSIKOLOG/
 # 1. Database
 docker compose up -d
 
-# 2. Backend
+# 2. AI (Ollama). Unduh model sekali (~3 GB); server Ollama berjalan di http://localhost:11434
+ollama pull gemma3:4b
+
+# 3. Backend
 cd backend
 npm install
 copy .env.example .env          # lalu isi nilai (lihat tabel di bawah)
@@ -84,7 +88,7 @@ npx prisma migrate deploy       # atau: npx prisma migrate dev
 npm run seed                    # admin + 10 spesialisasi
 npm run dev                     # http://localhost:4000
 
-# 3. Frontend (terminal baru)
+# 4. Frontend (terminal baru)
 cd frontend
 npm install
 copy .env.example .env.local
@@ -99,6 +103,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"   # 
 ```
 
 > Jika sebelumnya sudah menjalankan `migrate dev` dengan nama migrasi lain, reset database dev dengan `npx prisma migrate reset`.
+
+**Memilih model Ollama.** Default `gemma3:4b` (bahasa Indonesia cukup baik, ringan untuk CPU). Tanpa GPU, satu balasan bisa memakan 20–60 detik; dengan RAM/GPU lebih besar gunakan model yang lebih kuat, mis. `gemma3:12b` atau `qwen2.5:7b`, lalu set `OLLAMA_MODEL`. Hindari model *reasoning* (mis. `qwen3`, `deepseek-r1`) karena proses berpikirnya menghabiskan batas token classifier. Untuk menyimpan model di drive lain, set variabel lingkungan Windows `OLLAMA_MODELS` (mis. `D:\ollama\models`) lalu restart Ollama.
 
 ### Alur uji manual
 1. Login admin (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
@@ -130,7 +136,12 @@ Tanpa webhook publik, status pembayaran tetap diperbarui lewat tombol bayar (end
 | `POLICY_VERSION` | ✓ | Versi kebijakan privasi yang disetujui pengguna |
 | `UPLOAD_DIR` | – | Folder privat dokumen STR/SIPP (default `uploads`) |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | seed | Akun admin awal |
-| `ANTHROPIC_API_KEY` | AI | Tanpa ini fitur AI mengembalikan 503 |
+| `AI_PROVIDER` | – | `ollama` (default, gratis) atau `anthropic` |
+| `OLLAMA_BASE_URL` | AI | Default `http://localhost:11434`; kosongkan untuk menonaktifkan AI (503) |
+| `OLLAMA_MODEL` | – | Default `gemma3:4b` (harus sudah di-`ollama pull`) |
+| `OLLAMA_NUM_CTX` | – | Panjang konteks, default `8192` (agar system prompt tidak terpotong) |
+| `OLLAMA_TIMEOUT_MS` | – | Default `120000`; naikkan bila model lambat di CPU |
+| `ANTHROPIC_API_KEY` | AI* | Wajib bila `AI_PROVIDER=anthropic`; tanpa ini fitur AI mengembalikan 503 |
 | `ANTHROPIC_MODEL` | – | Default `claude-sonnet-4-6` |
 | `DAILY_API_KEY` | video | Tanpa ini video mengembalikan 503 |
 | `MIDTRANS_SERVER_KEY` | bayar | Server key (sandbox: `SB-Mid-server-...`) |
@@ -146,6 +157,8 @@ Tanpa webhook publik, status pembayaran tetap diperbarui lewat tombol bayar (end
 
 **Secret hanya di backend.** Tidak ada API key AI/Daily/Midtrans server di frontend.
 
+> Teks persetujuan AI di frontend (`ai-chat/page.tsx`, `settings/privacy/page.tsx`) menyebut Ollama di server platform. Jika beralih ke `AI_PROVIDER=anthropic`, perbarui teks tersebut karena data akan dikirim ke pihak ketiga.
+
 ## Pengujian
 
 ```powershell
@@ -158,7 +171,7 @@ npm run build       # type-check + build Next.js
 
 Cakupan tes: enkripsi & rotasi kunci, deteksi kata kunci krisis (positif & negatif palsu), filter output AI, tanda tangan riwayat chat, skoring PHQ-9/GAD-7, signature Midtrans, jendela sesi, autentikasi/RBAC, validasi input, batas ukuran body, consent AI, alur krisis (insiden dicatat tanpa isi pesan), dan penolakan webhook palsu.
 
-Belum otomatis (uji manual): integrasi nyata Claude/Daily/Midtrans dan alur end-to-end dengan database.
+Belum otomatis (uji manual): integrasi nyata Ollama/Claude/Daily/Midtrans dan alur end-to-end dengan database.
 
 ## Keamanan & privasi
 
@@ -210,13 +223,15 @@ Platform yang men-scale ke beberapa instance membutuhkan **Socket.IO Redis adapt
 - [ ] Domain Daily & API key produksi
 - [ ] Ganti password admin seed; aktifkan 2FA di dashboard pihak ketiga
 - [ ] Monitoring log (pino JSON) & alert untuk insiden krisis `OPEN`
-- [ ] Tinjau kebijakan privasi, perjanjian pemrosesan data dengan Anthropic/Daily/Midtrans, dan kepatuhan UU PDP (termasuk transfer data lintas negara)
+- [ ] AI: jalankan Ollama di server yang sama/jaringan privat (jangan ekspos port 11434 ke publik) dan set `OLLAMA_BASE_URL`; atau gunakan `AI_PROVIDER=anthropic`
+- [ ] Tinjau kebijakan privasi, perjanjian pemrosesan data dengan Daily/Midtrans (dan Anthropic bila dipakai), dan kepatuhan UU PDP (termasuk transfer data lintas negara)
 
 ## Keterbatasan MVP
 - Refund diproses manual di dashboard Midtrans lalu ditandai di admin.
 - Hapus akun mandiri hanya untuk peran pengguna; akun psikolog dihapus melalui admin/DB.
 - Notifikasi (email/WA) untuk booking, pengingat sesi, dan insiden krisis belum ada.
-- Classifier krisis bergantung pada ketersediaan Claude; jika gagal, AI tidak membalas dan menampilkan info hotline.
+- Classifier krisis bergantung pada ketersediaan model AI (Ollama/Claude); jika gagal, AI tidak membalas dan menampilkan info hotline.
+- Model lokal kecil (mis. `gemma3:4b`) kurang akurat dibanding model besar untuk classifier krisis dan kepatuhan aturan; lapisan kata kunci deterministik tetap berjalan lebih dulu. Uji kualitasnya sebelum produksi.
 - Belum ada tes E2E (Playwright) dan tes frontend.
 
 ---

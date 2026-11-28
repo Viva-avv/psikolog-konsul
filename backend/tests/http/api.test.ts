@@ -133,7 +133,7 @@ describe('AI consent & crisis handling', () => {
           { role: 'user', content: 'halo' },
         ],
       });
-    // No API key in tests: reaching the model yields 503, proving the request passed validation.
+    // AI is disabled in tests: reaching the model yields 503, proving the request passed validation.
     expect(res.status).toBe(503);
   });
 });

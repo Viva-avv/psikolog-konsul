@@ -12,7 +12,7 @@ const ITEMS: Array<{ type: ConsentType; title: string; desc: string; revokeWarni
   {
     type: 'AI_PROCESSING',
     title: 'Pemrosesan oleh AI',
-    desc: 'Pesan chat dan keluhan pra-asesmen dikirim ke penyedia AI (Anthropic Claude) untuk diproses.',
+    desc: 'Pesan chat dan keluhan pra-asesmen diproses oleh model AI (Ollama) yang berjalan di server platform.',
   },
   {
     type: 'STORE_AI_CHAT',
