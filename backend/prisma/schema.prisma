@@ -82,6 +82,15 @@ enum AssessmentType {
   GAD7
 }
 
+// "Temukan Dirimu" self-reflection tests (not clinical screening).
+enum SelfTestType {
+  BIG_FIVE
+  SIXTEEN_TYPES
+  TRAUMA
+  HEARTBREAK
+  LOVE_LANGUAGE
+}
+
 enum ConsentType {
   TERMS_PRIVACY
   AI_PROCESSING
@@ -99,6 +108,7 @@ enum CrisisTrigger {
   KEYWORD
   CLASSIFIER
   PHQ9_ITEM9
+  SELF_TEST_ITEM
   FAILSAFE
 }
 
@@ -143,6 +153,7 @@ model User {
   aiConversations     AiConversation[]
   assessments         Assessment[]
   assessmentSummaries AssessmentSummary[]
+  selfTestResults     SelfTestResult[]
   chatMessages        ChatMessage[]
   crisisIncidents     CrisisIncident[]      @relation("IncidentUser")
   handledIncidents    CrisisIncident[]      @relation("IncidentHandler")
@@ -350,6 +361,19 @@ model Assessment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
+}
+
+// Only the computed result is stored (encrypted), never the item-level answers.
+model SelfTestResult {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  type      SelfTestType
+  resultEnc String
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model AssessmentSummary {

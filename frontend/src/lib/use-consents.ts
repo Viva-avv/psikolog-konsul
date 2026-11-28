@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import type { ConsentType } from './types';
 
-export function useConsents() {
+/** Pass `enabled = false` for visitors who cannot hold consents (signed out or non-USER roles). */
+export function useConsents(enabled = true) {
   const [active, setActive] = useState<Set<ConsentType>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const reload = useCallback(async () => {
     const r = await api<{ items: Array<{ type: string; scopeRef: string | null }> }>('/consents');
@@ -15,8 +16,14 @@ export function useConsents() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      setActive(new Set());
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     reload().catch(() => setLoading(false));
-  }, [reload]);
+  }, [enabled, reload]);
 
   const grant = useCallback(
     async (type: ConsentType) => {

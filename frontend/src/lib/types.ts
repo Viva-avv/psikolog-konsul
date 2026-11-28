@@ -96,3 +96,99 @@ export interface Recommendation extends Psychologist {
   nextSlot: { id: string; startAt: string; endAt: string } | null;
   matchCount?: number;
 }
+
+// ---------- Temukan Dirimu (self-tests) ----------
+
+export type SelfTestType = 'BIG_FIVE' | 'SIXTEEN_TYPES' | 'TRAUMA' | 'HEARTBREAK' | 'LOVE_LANGUAGE';
+export type SelfTestTheme = 'kepribadian' | 'trauma' | 'patah-hati' | 'bahasa-cinta';
+
+export interface SelfTestSummary {
+  slug: string;
+  type: SelfTestType;
+  theme: SelfTestTheme;
+  title: string;
+  tagline: string;
+  minutes: number;
+  itemCount: number;
+}
+
+export interface SelfTestOption {
+  value: number;
+  label: string;
+}
+
+export interface SelfTest extends SelfTestSummary {
+  description: string;
+  source: string;
+  warning: string | null;
+  prompt: string;
+  options: SelfTestOption[] | null;
+  items: Array<{ text: string; options?: SelfTestOption[]; section?: string; showIf?: { item: number; value: number } }>;
+}
+
+export interface BigFiveResult {
+  traits: Array<{ key: string; name: string; score: number; max: number; percent: number; level: string; description: string }>;
+}
+
+export interface SixteenTypesResult {
+  code: string;
+  nickname: string;
+  summary: string;
+  strengths: string[];
+  growth: string;
+  dimensions: Array<{
+    key: string;
+    letter: string;
+    left: { letter: string; name: string };
+    right: { letter: string; name: string };
+    leftPercent: number;
+  }>;
+}
+
+export interface TraumaResult {
+  ace: { score: number; max: number; band: string; description: string };
+  ptsd: { exposure: boolean; score: number; max: number; positive: boolean; description: string };
+  suggestSupport: boolean;
+}
+
+export interface HeartbreakResult {
+  score: number;
+  max: number;
+  band: string;
+  description: string;
+  areas: Array<{ name: string; tip: string }>;
+  safetyConcern: boolean;
+}
+
+export interface LoveLanguageResult {
+  ranking: Array<{ key: string; name: string; description: string; tip: string; score: number; max: number; percent: number }>;
+  primary: string[];
+}
+
+export type SelfTestOutcome = {
+  id: string | null;
+  slug: string;
+  title: string;
+  headline: string;
+  createdAt: string;
+  saved: boolean;
+  recommendations: Recommendation[];
+  crisis?: CrisisInfo;
+} & (
+  | { type: 'BIG_FIVE'; result: BigFiveResult }
+  | { type: 'SIXTEEN_TYPES'; result: SixteenTypesResult }
+  | { type: 'TRAUMA'; result: TraumaResult }
+  | { type: 'HEARTBREAK'; result: HeartbreakResult }
+  | { type: 'LOVE_LANGUAGE'; result: LoveLanguageResult }
+);
+
+export interface SelfTestHistoryItem {
+  id: string;
+  slug: string;
+  type: SelfTestType;
+  title: string;
+  headline: string;
+  createdAt: string;
+}
+
+export type SelfTestInsight = { type: 'INSIGHT'; text: string } | { type: 'CRISIS'; crisis: CrisisInfo };

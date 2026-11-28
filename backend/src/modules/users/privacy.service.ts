@@ -8,7 +8,7 @@ import { unauthorized } from '../../lib/errors';
 
 /** UU PDP right of access: everything stored about the user, decrypted, in one JSON document. */
 export async function exportData(req: Request, userId: string) {
-  const [user, consents, bookings, assessments, summaries, conversations, sentMessages] = await Promise.all([
+  const [user, consents, bookings, assessments, summaries, selfTests, conversations, sentMessages] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
@@ -32,6 +32,7 @@ export async function exportData(req: Request, userId: string) {
     }),
     prisma.assessment.findMany({ where: { userId } }),
     prisma.assessmentSummary.findMany({ where: { userId } }),
+    prisma.selfTestResult.findMany({ where: { userId } }),
     prisma.aiConversation.findMany({ where: { userId }, include: { messages: { orderBy: { createdAt: 'asc' } } } }),
     prisma.chatMessage.findMany({ where: { senderId: userId }, orderBy: { createdAt: 'asc' } }),
   ]);
@@ -55,6 +56,7 @@ export async function exportData(req: Request, userId: string) {
     })),
     assessments: assessments.map((a) => ({ type: a.type, createdAt: a.createdAt, ...decryptJson<object>(a.resultEnc) })),
     assessmentSummaries: summaries.map((s) => ({ createdAt: s.createdAt, ...decryptJson<object>(s.contentEnc) })),
+    selfTestResults: selfTests.map((r) => ({ type: r.type, createdAt: r.createdAt, ...decryptJson<object>(r.resultEnc) })),
     aiConversations: conversations.map((c) => ({
       id: c.id,
       status: c.status,
@@ -95,6 +97,7 @@ export async function deleteAccount(req: Request, userId: string, password: stri
     await tx.aiConversation.deleteMany({ where: { userId } });
     await tx.assessmentSummary.deleteMany({ where: { userId } });
     await tx.assessment.deleteMany({ where: { userId } });
+    await tx.selfTestResult.deleteMany({ where: { userId } });
     await tx.chatMessage.deleteMany({ where: { senderId: userId } });
     await tx.refreshToken.deleteMany({ where: { userId } });
     await tx.consent.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } });

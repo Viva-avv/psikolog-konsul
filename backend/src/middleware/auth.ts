@@ -26,6 +26,12 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
   next();
 }
 
+/** Public routes that behave differently for signed-in users. A present but invalid token still yields 401. */
+export function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+  if (!req.headers.authorization) return next();
+  return authenticate(req, res, next);
+}
+
 export const requireRole =
   (...roles: Role[]) =>
   (req: Request, _res: Response, next: NextFunction) => {

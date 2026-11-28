@@ -15,6 +15,7 @@ import { bookingsRouter } from './modules/bookings/bookings.routes';
 import { consentsRouter } from './modules/consents/consents.routes';
 import { aiRouter, assessmentsRouter } from './modules/ai/ai.routes';
 import { paymentsRouter } from './modules/payments/payments.routes';
+import { discoverRouter } from './modules/discover/discover.routes';
 
 export function createApp() {
   const app = express();
@@ -44,6 +45,7 @@ export function createApp() {
   api.use('/ai', aiRouter);
   api.use('/assessments', assessmentsRouter);
   api.use('/payments', paymentsRouter);
+  api.use('/discover', discoverRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

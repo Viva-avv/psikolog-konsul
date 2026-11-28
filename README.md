@@ -20,11 +20,24 @@ Platform untuk booking sesi dengan **psikolog terverifikasi**, dengan **AI sebag
 
 | Peran | Fitur |
 |---|---|
-| **Pengguna** | Registrasi/login, chat AI pendamping (tersimpan / tanpa simpan), pra-asesmen PHQ-9 & GAD-7, ringkasan keluhan + rekomendasi psikolog, booking & bayar (Midtrans), chat real-time & video call (Daily), berbagi ringkasan ke psikolog per sesi, riwayat sesi, atur persetujuan, unduh & hapus data |
+| **Pengunjung** (tanpa akun) | Tes mandiri *Temukan Dirimu*, cari & lihat profil psikolog |
+| **Pengguna** | Registrasi/login, chat AI pendamping (tersimpan / tanpa simpan), pra-asesmen PHQ-9 & GAD-7, ringkasan keluhan + rekomendasi psikolog, tes *Temukan Dirimu* dengan riwayat hasil & penjelasan AI, booking & bayar (Midtrans), chat real-time & video call (Daily), berbagi ringkasan ke psikolog per sesi, riwayat sesi, atur persetujuan, unduh & hapus data |
 | **Psikolog** | Profil & spesialisasi, unggah STR/SIPP, atur slot jadwal, daftar sesi, lihat ringkasan pra-asesmen (jika dibagikan), catatan sesi terenkripsi, ruang sesi |
 | **Admin** | Ringkasan laporan, kelola pengguna (tangguhkan/aktifkan), verifikasi psikolog, log insiden krisis (tanpa isi percakapan), antrean refund, audit log |
 
 **AI (default: model open-source lewat [Ollama](https://ollama.com), gratis & self-hosted; opsional Claude; hanya dipanggil dari backend):** pendamping empatik + psikoedukasi; dilarang mendiagnosis, menyebut obat, atau mengaku terapis. Deteksi krisis dua lapis (kata kunci deterministik → classifier LLM); jika terdeteksi, respons AI dihentikan, kontak darurat dan tombol *booking segera* ditampilkan, dan insiden dicatat tanpa isi pesan.
+
+**Temukan Dirimu (`/discover`):** tes refleksi diri yang bisa diikuti tanpa login. Skor dihitung di server; hasil hanya disimpan (terenkripsi, tanpa jawaban per butir) bila pengguna login dan menyetujui `STORE_ASSESSMENT`. Penjelasan AI opsional hanya menerima skor hasil.
+
+| Tema | Tes | Sumber |
+|---|---|---|
+| Tipe kepribadian | Big Five (20 butir) | Mini-IPIP dari International Personality Item Pool (domain publik) |
+| Tipe kepribadian | 16 tipe 4 huruf (20 butir) | Butir & deskripsi orisinal; **bukan** MBTI® resmi |
+| Trauma masa lalu | ACE (10) + PC-PTSD-5 (1 + 5 kondisional) | ACE (Felitti dkk., 1998), PC-PTSD-5 (US VA, domain publik) |
+| Gangguan hati | Patah hati (10 butir, butir 10 = keselamatan → panel krisis + insiden `SELF_TEST_ITEM`) | Skala refleksi orisinal, belum tervalidasi klinis |
+| Bahasa cinta | 20 pasangan pilihan | Terinspirasi konsep Gary Chapman; butir orisinal, **bukan** kuis resmi |
+
+Definisi tes ada di `backend/src/modules/discover/tests/`; menambah tes cukup dengan file definisi baru + nilai enum `SelfTestType` di Prisma.
 
 ## Arsitektur
 
@@ -51,7 +64,7 @@ PSIKOLOG/
 │  │  ├─ lib/                  # crypto, jwt, llm (Ollama/Claude), daily, midtrans, storage, audit
 │  │  ├─ middleware/           # auth/RBAC, validate, rateLimit, upload, error
 │  │  ├─ modules/              # auth, users, consents, psychologists, bookings,
-│  │  │                        # payments, chat, video, ai, admin
+│  │  │                        # payments, chat, video, ai, discover, admin
 │  │  ├─ sockets/              # Socket.IO /chat
 │  │  └─ jobs/                 # pelepasan slot yang tidak dibayar
 │  ├─ tests/                   # Vitest (unit + HTTP)
@@ -163,13 +176,13 @@ Tanpa webhook publik, status pembayaran tetap diperbarui lewat tombol bayar (end
 
 ```powershell
 cd backend
-npm test            # Vitest: 73 tes unit + HTTP, tanpa database (Prisma di-mock)
+npm test            # Vitest: 94 tes unit + HTTP, tanpa database (Prisma di-mock)
 npm run typecheck
 cd ../frontend
 npm run build       # type-check + build Next.js
 ```
 
-Cakupan tes: enkripsi & rotasi kunci, deteksi kata kunci krisis (positif & negatif palsu), filter output AI, tanda tangan riwayat chat, skoring PHQ-9/GAD-7, signature Midtrans, jendela sesi, autentikasi/RBAC, validasi input, batas ukuran body, consent AI, alur krisis (insiden dicatat tanpa isi pesan), dan penolakan webhook palsu.
+Cakupan tes: enkripsi & rotasi kunci, deteksi kata kunci krisis (positif & negatif palsu), filter output AI, tanda tangan riwayat chat, skoring PHQ-9/GAD-7, skoring & validasi jawaban tes Temukan Dirimu, signature Midtrans, jendela sesi, autentikasi/RBAC, validasi input, batas ukuran body, consent AI, alur krisis (insiden dicatat tanpa isi pesan), dan penolakan webhook palsu.
 
 Belum otomatis (uji manual): integrasi nyata Ollama/Claude/Daily/Midtrans dan alur end-to-end dengan database.
 
@@ -182,7 +195,7 @@ Belum otomatis (uji manual): integrasi nyata Ollama/Claude/Daily/Midtrans dan al
 | Enkripsi saat disimpan | AES-256-GCM per kolom: chat AI, pesan sesi, asesmen, ringkasan, catatan sesi, nomor STR/SIPP; rotasi kunci didukung |
 | Enkripsi saat dikirim | HTTPS/WSS di produksi (cookie `Secure`, HSTS via helmet) |
 | Consent | `TERMS_PRIVACY`, `AI_PROCESSING`, `STORE_AI_CHAT`, `STORE_ASSESSMENT`, `SHARE_ASSESSMENT` (per booking). Mencabut consent penyimpanan langsung menghapus datanya |
-| UU PDP | Minimisasi data (keluhan mentah tidak disimpan, Midtrans hanya menerima nama depan), hak akses (`GET /users/me/export`), hak hapus (`DELETE /users/me`), audit log untuk akses data sensitif |
+| UU PDP | Minimisasi data (keluhan mentah dan jawaban per butir tes Temukan Dirimu tidak disimpan, Midtrans hanya menerima nama depan), hak akses (`GET /users/me/export`), hak hapus (`DELETE /users/me`), audit log untuk akses data sensitif |
 | Prompt injection | System prompt hanya di server, input disanitasi, tidak ada tool, riwayat chat tanpa simpan ditandatangani HMAC, output terstruktur JSON untuk classifier/ringkasan, filter output |
 | Rate limiting | Global 300/15 menit/IP, auth 5/menit, AI 20/menit/pengguna, chat sesi 10 pesan/10 detik |
 | Validasi | zod di semua input; upload dicek magic bytes; body JSON maks. 100 KB |
@@ -233,6 +246,8 @@ Platform yang men-scale ke beberapa instance membutuhkan **Socket.IO Redis adapt
 - Classifier krisis bergantung pada ketersediaan model AI (Ollama/Claude); jika gagal, AI tidak membalas dan menampilkan info hotline.
 - Model lokal kecil (mis. `gemma3:4b`) kurang akurat dibanding model besar untuk classifier krisis dan kepatuhan aturan; lapisan kata kunci deterministik tetap berjalan lebih dulu. Uji kualitasnya sebelum produksi.
 - Belum ada tes E2E (Playwright) dan tes frontend.
+- Skala *Patah Hati* dan 16 tipe kepribadian disusun sendiri dan belum divalidasi secara psikometri; adaptasi Indonesia untuk Mini-IPIP, ACE, dan PC-PTSD-5 juga belum divalidasi. Tinjau bersama psikolog sebelum produksi.
+- Pengguna anonim yang masuk setelah menyelesaikan tes perlu mengulang tes agar hasilnya tersimpan.
 
 ---
 

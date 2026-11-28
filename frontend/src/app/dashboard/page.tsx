@@ -17,6 +17,9 @@ export default function UserDashboardPage() {
           <Link href="/assessment" className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
             Pra-asesmen
           </Link>
+          <Link href="/discover" className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
+            Temukan Dirimu
+          </Link>
           <Link href="/psychologists" className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">
             Cari psikolog
           </Link>

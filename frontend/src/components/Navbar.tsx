@@ -17,6 +17,9 @@ export function Navbar() {
         </Link>
         {!loading && (
           <div className="flex items-center gap-4 text-sm">
+            <Link href="/discover" className="text-slate-700 hover:text-teal-700">
+              Temukan Dirimu
+            </Link>
             <Link href="/psychologists" className="text-slate-700 hover:text-teal-700">
               Psikolog
             </Link>

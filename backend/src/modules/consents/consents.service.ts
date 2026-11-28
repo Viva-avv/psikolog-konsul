@@ -54,6 +54,7 @@ export async function revoke(req: Request, userId: string, type: UserManagedCons
       });
       await tx.assessmentSummary.deleteMany({ where: { userId } });
       await tx.assessment.deleteMany({ where: { userId } });
+      await tx.selfTestResult.deleteMany({ where: { userId } });
     }
   });
   await audit(req, { action: 'consent.revoke', metadata: { type } });

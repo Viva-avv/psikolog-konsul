@@ -15,6 +15,8 @@ const db = vi.hoisted(() => {
       },
       consent: { findFirst: vi.fn(async () => null as unknown) },
       crisisIncident: { findFirst: vi.fn(async () => null), create: vi.fn(async () => ({})), update: vi.fn() },
+      selfTestResult: { create: vi.fn(async () => ({ id: 'r1', createdAt: new Date() })) },
+      psychologistProfile: { findMany: vi.fn(async () => []) },
       auditLog: { create: vi.fn(async () => ({})) },
       $transaction: vi.fn(async (arg: unknown) => (Array.isArray(arg) ? Promise.all(arg) : arg)),
     },
@@ -36,6 +38,7 @@ beforeEach(() => {
   db.users.clear();
   db.prisma.consent.findFirst.mockResolvedValue(null);
   db.prisma.crisisIncident.create.mockClear();
+  db.prisma.selfTestResult.create.mockClear();
 });
 
 describe('authentication & RBAC', () => {
@@ -134,6 +137,49 @@ describe('AI consent & crisis handling', () => {
         ],
       });
     // AI is disabled in tests: reaching the model yields 503, proving the request passed validation.
+    expect(res.status).toBe(503);
+  });
+});
+
+describe('Temukan Dirimu self-tests', () => {
+  const submit = (slug: string, answers: number[], auth?: string) => {
+    const req = request(app).post(`/api/v1/discover/tests/${slug}`);
+    return (auth ? req.set('Authorization', auth) : req).send({ answers });
+  };
+
+  it('lets anonymous visitors take a test without storing anything', async () => {
+    const res = await submit('bahasa-cinta', Array(20).fill(0));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ type: 'LOVE_LANGUAGE', saved: false, id: null });
+    expect(res.body.result.ranking).toHaveLength(5);
+    expect(db.prisma.selfTestResult.create).not.toHaveBeenCalled();
+  });
+
+  it('stores results only for consenting users', async () => {
+    db.prisma.consent.findFirst.mockResolvedValue({ id: 'c1' });
+    const res = await submit('big-five', Array(20).fill(3), tokenFor('u7', 'USER'));
+    expect(res.body).toMatchObject({ saved: true, id: 'r1' });
+    expect(db.prisma.selfTestResult.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows crisis resources and logs an incident when the self-harm item is endorsed', async () => {
+    const res = await submit('patah-hati', [...Array(9).fill(1), 2], tokenFor('u8', 'USER'));
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body.crisis)).toContain('119');
+    expect(JSON.stringify(db.prisma.crisisIncident.create.mock.calls[0])).toContain('SELF_TEST_ITEM');
+  });
+
+  it('rejects answers that are not valid options', async () => {
+    expect((await submit('tipe-kepribadian', Array(20).fill(2))).status).toBe(400);
+    expect((await submit('tidak-ada', [0])).status).toBe(400);
+  });
+
+  it('requires sign-in for the AI insight', async () => {
+    const body = { slug: 'bahasa-cinta', answers: Array(20).fill(0) };
+    expect((await request(app).post('/api/v1/discover/insight').send(body)).status).toBe(401);
+
+    db.prisma.consent.findFirst.mockResolvedValue({ id: 'c1' });
+    const res = await request(app).post('/api/v1/discover/insight').set('Authorization', tokenFor('u9', 'USER')).send(body);
     expect(res.status).toBe(503);
   });
 });

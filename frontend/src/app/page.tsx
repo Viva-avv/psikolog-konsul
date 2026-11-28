@@ -8,7 +8,7 @@ export default function HomePage() {
         Ceritakan apa yang Anda rasakan kepada asisten AI pendamping, isi pra-asesmen singkat, lalu booking sesi dengan
         psikolog yang sesuai.
       </p>
-      <div className="mt-8 flex justify-center gap-3">
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Link href="/register" className="btn-primary">
           Mulai sekarang
         </Link>
@@ -16,6 +16,15 @@ export default function HomePage() {
           Saya sudah punya akun
         </Link>
       </div>
+      <Link
+        href="/discover"
+        className="mx-auto mt-10 block max-w-xl rounded-xl border border-teal-200 bg-white p-5 text-left shadow-sm hover:border-teal-500"
+      >
+        <strong className="text-teal-800">Temukan Dirimu →</strong>
+        <p className="mt-1 text-sm text-slate-600">
+          Tes mandiri gratis tanpa perlu daftar: tipe kepribadian, trauma masa lalu, patah hati, dan bahasa cinta.
+        </p>
+      </Link>
     </section>
   );
 }

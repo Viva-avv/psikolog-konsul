@@ -12,7 +12,7 @@ const ITEMS: Array<{ type: ConsentType; title: string; desc: string; revokeWarni
   {
     type: 'AI_PROCESSING',
     title: 'Pemrosesan oleh AI',
-    desc: 'Pesan chat dan keluhan pra-asesmen diproses oleh model AI (Ollama) yang berjalan di server platform.',
+    desc: 'Pesan chat, keluhan pra-asesmen, dan skor tes Temukan Dirimu (saat meminta penjelasan AI) diproses oleh model AI (Ollama) yang berjalan di server platform.',
   },
   {
     type: 'STORE_AI_CHAT',
@@ -23,8 +23,8 @@ const ITEMS: Array<{ type: ConsentType; title: string; desc: string; revokeWarni
   {
     type: 'STORE_ASSESSMENT',
     title: 'Simpan hasil asesmen',
-    desc: 'Hasil PHQ-9/GAD-7 dan ringkasan keluhan disimpan terenkripsi.',
-    revokeWarning: 'Semua hasil asesmen dan ringkasan akan dihapus, dan berbagi ke psikolog dicabut.',
+    desc: 'Hasil PHQ-9/GAD-7, tes Temukan Dirimu, dan ringkasan keluhan disimpan terenkripsi.',
+    revokeWarning: 'Semua hasil asesmen, hasil tes Temukan Dirimu, dan ringkasan akan dihapus, dan berbagi ke psikolog dicabut.',
   },
 ];
 
@@ -135,7 +135,8 @@ function DataRights() {
       <form onSubmit={deleteAccount} className="space-y-2 border-t border-slate-200 pt-6">
         <h2 className="font-semibold text-red-700">Hapus akun</h2>
         <p className="text-sm text-slate-600">
-          Chat AI, hasil asesmen, ringkasan, dan pesan sesi Anda dihapus permanen; booking mendatang dibatalkan. Catatan
+          Chat AI, hasil asesmen, hasil tes Temukan Dirimu, ringkasan, dan pesan sesi Anda dihapus permanen; booking
+          mendatang dibatalkan. Catatan
           transaksi disimpan tanpa identitas untuk kewajiban pembukuan, dan catatan klinis psikolog disimpan sesuai
           kewajiban rekam layanan.
         </p>
